@@ -1,5 +1,5 @@
 from django.test import TestCase
-from restapi import models
+from . import models
 from django.urls import reverse
 #from unittest import TestCase
 
@@ -26,6 +26,7 @@ class TestModels(TestCase):
 
 class TestViews(TestCase):
     def test_expense_create(self):
+        """
         payload = {
             "amount": 50,
             "merchant": "AT&T",
@@ -39,7 +40,29 @@ class TestViews(TestCase):
 
         json_res = res.json()
 
+        # en el test anterior daba un error porque esperaba un string en el amount, por eso lo pasamos como un str
         self.assertEqual(str(payload["amount"]), json_res["amount"])
+        self.assertEqual(payload["merchant"], json_res["merchant"])
+        self.assertEqual(payload["description"], json_res["description"])
+        self.assertEqual(payload["category"], json_res["category"])
+        self.assertIsInstance(json_res["id"], int)
+        """
+
+        # con serializers:
+        payload = {
+            "amount": 50.0,
+            "merchant": "AT&T",
+            "description": "cell phone subscription",
+            "category": "utilities"
+        }
+
+        res = self.client.post(reverse("restapi:expense-list-create"), payload, format="json")
+
+        self.assertEqual(201, res.status_code)
+
+        json_res = res.json()
+
+        self.assertEqual(payload["amount"], json_res["amount"])
         self.assertEqual(payload["merchant"], json_res["merchant"])
         self.assertEqual(payload["description"], json_res["description"])
         self.assertEqual(payload["category"], json_res["category"])
@@ -56,3 +79,14 @@ class TestViews(TestCase):
 
         expenses = models.Expense.objects.all()
         self.assertEqual(len(expenses), len(json_res))
+
+    def test_expense_create_required_fields_missing(self):
+        payload = {
+            "merchant": "AT&T",
+            "description": "cell phone subscription",
+            "category": "utilities"
+        }
+
+        res = self.client.post(reverse("restapi:expense-list-create"), payload, format="json")
+
+        self.assertEqual(400, res.status_code)
